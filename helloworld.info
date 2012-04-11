@@ -1,0 +1,9 @@
+; $Id$
+ 
+name = helloworld
+description = Reinholds Hello World module
+package = Reinholds modules
+core = 7.x
+configure = admin/config/content/helloworld
+
+files[] = helloworld.module

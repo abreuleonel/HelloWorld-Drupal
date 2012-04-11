@@ -1,0 +1,178 @@
+<?php
+
+function helloworld_schema() {
+	$schema['helloworld'] = array(
+		'description' 	=> 'The base table helloworld',
+		'fields' => array(
+			'id' 	=> array('type' => 'serial', 'not null' => true),
+			'name'	=> array('type' => 'varchar', 'length' => 255 ,  'not null' => true),
+			'desc'	=> array('type' => 'varchar', 'length' => 255 ,  'not null' => true)
+		),
+		'primary key' => array('id')
+	);
+	return $schema;
+}
+
+function helloworld_enable() {
+	drupal_install_schema('helloworld');
+}
+
+function helloworld_disable() {
+	drupal_uninstall_schema('helloworld');
+}
+
+function action_example_action_info() {
+  return array(
+    'action_example_basic_action' => array(
+      'label' => t('Action Example: A basic example action that does nothing'),
+      'type' => 'system',
+      'configurable' => FALSE,
+      'triggers' => array('any'),
+    ),
+    'action_example_unblock_user_action' => array(
+      'label' => t('Action Example: Unblock a user'),
+      'type' => 'user',
+      'configurable' => FALSE,
+      'triggers' => array('any'),
+    ),
+    'action_example_node_sticky_action' => array(
+      'type' => 'node',
+      'label' => t('Action Example: Promote to frontpage and sticky on top any content created by :'),
+      'configurable' => TRUE,
+      'behavior' => array('changes_property'),
+      'triggers' => array('node_presave', 'node_insert', 'node_update'),
+    ),
+  );
+}
+
+function helloworld_menu() {
+  	$items['admin/config/content/helloworld'] = array(
+		'title' => 'Hello World Module',
+		'page callback' => 'helloworld_page',
+		'access callback' => TRUE,
+		'expanded' => TRUE,
+	);
+	$items['admin/config/content/helloworld/add'] = array(
+    	'title'           => 'Add a Hello World',
+		'description'     => 'Provides a basic information page.',
+		'page callback'   => 'drupal_get_form',
+		'page arguments' => array('current_helloworld_form'),
+		'access callback' => TRUE,
+		'expanded' => TRUE,
+		'type' => MENU_LOCAL_ACTION,
+		'weight' => 1,
+  	);
+	$items['admin/config/content/helloworld/edit'] = array(
+    	'title'           => 'Edit a Hello World',
+		'description'     => 'Provides a basic information page.',
+		'page callback'   => 'drupal_get_form',
+		'page arguments' => array('current_helloworld_form'),
+		'access callback' => TRUE,
+		'weight' => 1,
+  	);
+	$items['admin/config/content/helloworld/delete'] = array(
+    	'title'           => 'Delete a Hello World',
+		'description'     => 'Provides a basic information page.',
+		'page callback'   => 'drupal_get_form',
+		'page arguments' => array('helloworld_delete_page'),
+		'access callback' => TRUE,
+		'weight' => 1,
+  	);
+  	return $items;
+}
+ 
+function helloworld_page() {
+	$header = array(
+		array('data' => t('ID'), 'field' => 'h.id'),
+		array('data' => t('Name'), 'field' => 'h.name'),
+		array('data' => t('Description'), 'field' => 'h.`desc`'),
+		array('data' => t(''), 'colspan' => 2),
+	);
+	$result = db_select('helloworld', 'h')
+		->extend('TableSort')
+		->fields('h')
+		->orderByHeader($header)
+		->execute();
+	
+	$rows = array();
+	foreach ($result as $resultado) {
+		$link_attributes = array('attributes' => array('class' => array('image-style-link')));
+		$row = array();
+		$row[] = l($resultado->id, 'admin/config/content/helloworld/edit/' . $resultado->id);
+		$row[] = $resultado->name;
+		$row[] = $resultado->desc;
+		$row[] = l(t('Edit'), 'admin/config/content/helloworld/edit/' . $resultado->id, $link_attributes);
+		$row[] = '';
+		$rows[] = $row;
+	}	
+	if (empty($rows)) {
+		$rows[] = array(array(
+			'colspan' => 4,
+			'data' => t('There are currently no Hello World. <a href="!url">Add a new one</a>.', array('!url' => url('admin/config/content/helloworld/add'))),
+		));
+	}
+	return theme('table', array('header' => $header, 'rows' => $rows));
+}
+
+function current_helloworld_form($form, &$form_state) {
+	if(isset($form_state['build_info']['args'][0])) {
+		$get_id = $form_state['build_info']['args'][0];
+		$result = db_select('helloworld', 'h')
+					->fields('h')
+					->condition('id', $get_id, '=')
+					->execute()
+					->fetchAssoc();
+	}
+	
+	$form['author'] = array(
+		'#title' => t('Author name'),
+		'#type' => 'textfield',
+		'#description' => t('Any content created, presaved or updated by this user will be promoted to front page and set as sticky.'),
+		'#default_value' => isset($result['name']) ? $result['name'] : '',
+	);
+	$form['description'] = array(
+		'#title' => t('Author Description'),
+		'#type' => 'textfield',
+		'#default_value' => isset($result['desc']) ? $result['desc'] : '',
+	);
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Salvar'),
+	);
+	if(isset($form_state['build_info']['args'][0])) {
+		$form['delete'] = array(
+			'#type' => 'submit',
+			'#value' => t('Delete'),
+			'#submit' => array('current_helloworld_form_delete')
+		);
+	}
+ 	return $form;
+}
+function current_helloworld_form_delete($form, &$form_state) {
+	$get_id	= $form_state['build_info']['args'][0];
+	$id 	= db_delete('helloworld')
+				->condition('id', $get_id, '=')
+				->execute();
+	drupal_set_message(t('The Hello World %name  has been deleted.', array('%name' => $form_state['input']['author'])));
+	$form_state['redirect'] = 'admin/config/content/helloworld';
+}
+
+function current_helloworld_form_submit($form, &$form_state) {
+	if(!isset($form_state['build_info']['args'][0])) {
+		$id = db_insert('helloworld')
+				->fields(array('name' => (string)$form_state['values']['author'], '`desc`' => (string)$form_state['values']['description']))
+				->execute();
+		drupal_set_message(t('The Hello World %name  has been add.', array('%name' => $form_state['values']['author'])));
+		$form_state['redirect'] = 'admin/config/content/helloworld';
+	} else {
+		$get_id = $form_state['build_info']['args'][0];
+		$id = db_update('helloworld')
+				->fields(array('name' => (string)$form_state['values']['author'], '`desc`' => (string)$form_state['values']['description']))
+				->condition('id', $get_id, '=')
+				->execute();
+		drupal_set_message(t('The Hello World %name  has been updated.', array('%name' => $form_state['values']['author'])));
+		$form_state['redirect'] = 'admin/config/content/helloworld';
+	}
+}
+
+?>

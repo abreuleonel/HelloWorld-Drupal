@@ -1,0 +1,4 @@
+Para instalar o módulo HelloWorld:
+1- Instalar o drupal 7;
+2- Depois de instalado, colar a pasta hellworld dentro da pasta modulos do drupal;
+3- Após copiar a pasta basta entrar em admin/modules e ativar o módulo HelloWorld.
